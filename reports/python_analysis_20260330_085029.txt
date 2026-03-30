@@ -1,0 +1,5 @@
+Python Files: 18
+Total Lines: 617
+Classes: 18
+Functions: 20
+Average LOC per file: 34.3

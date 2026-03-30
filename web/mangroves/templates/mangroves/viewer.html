@@ -1,0 +1,428 @@
+{% extends "mangroves/base.html" %}
+{% block title %}Peta · Mangrove Viewer{% endblock %}
+
+{% block head_extra %}
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+  <style>
+    .map-wrap { height: calc(100vh - 56px); }
+    #map { height: 100%; width: 100%; }
+    .control-card { position: absolute; z-index: 1000; top: 12px; left: 12px; width: 360px; }
+    .result-card { position:absolute; z-index:1000; bottom:12px; left:12px; width:360px; }
+    .legend { position:absolute; right:12px; bottom:12px; z-index:1000; }
+    .legend .swatch { width:14px; height:14px; display:inline-block; border-radius:2px; margin-right:6px; background:#00c853; }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="map-wrap position-relative">
+    <div id="map"></div>
+
+    <div class="control-card">
+      <div class="card shadow">
+        <div class="card-header py-2 d-flex align-items-center gap-2">
+          <span class="fw-semibold">Kontrol Peta</span>
+          <span class="badge text-bg-success">Live</span>
+        </div>
+        <div class="card-body">
+          <div class="mb-2">
+            <label class="form-label mb-1">Raster</label>
+            <select id="rasterSelect" class="form-select form-select-sm">
+              <option value="">(none)</option>
+            </select>
+            <div class="form-text">Tiles: <code>/media/tiles/raster_&lt;ID&gt;/</code> (XYZ).</div>
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label mb-1">Basemap</label>
+            <select id="basemapSelect" class="form-select form-select-sm">
+              <option value="street">Street</option>
+              <option value="terrain">Terrain</option>
+              <option value="satellite">Satellite</option>
+            </select>
+          </div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="chkViewBbox" checked>
+            <label class="form-check-label" for="chkViewBbox">Filter vektor sesuai tampilan peta</label>
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label mb-1">Search (name/species)</label>
+            <input type="text" id="txtSearch" class="form-control form-control-sm" placeholder="e.g. avicennia">
+          </div>
+
+          <div class="d-flex gap-2 mb-2">
+            <button id="btnApply" class="btn btn-primary btn-sm">Apply</button>
+            <button id="btnZoom" class="btn btn-outline-secondary btn-sm">Zoom to raster</button>
+          </div>
+
+          <div>
+            <label for="opacity" class="form-label mb-1">Opacity: <span id="opv" class="fw-semibold">0.70</span></label>
+            <input id="opacity" type="range" min="0" max="1" step="0.05" value="0.7" class="form-range">
+          </div>
+
+          <div class="mt-3 pt-3 border-top">
+            <div class="small text-muted mb-1">Luas Raster Terpilih</div>
+            <div class="fw-semibold" id="areaRasterName">Belum ada raster dipilih</div>
+            <div class="small text-muted" id="mangroveAreaRow">Mangrove: <span id="mangroveAreaValue">-</span></div>
+            <div class="small text-muted" id="mangroveAreaKmRow">Mangrove: <span id="mangroveAreaKmValue">-</span></div>
+            <div class="small text-muted" id="nonMangroveAreaRow">Non-mangrove: <span id="nonMangroveAreaValue">-</span></div>
+            <div class="small text-muted" id="nonMangroveAreaKmRow">Non-mangrove: <span id="nonMangroveAreaKmValue">-</span></div>
+          </div>
+
+          <div class="mt-3 pt-3 border-top">
+            <div class="small text-muted mb-1">Info Raster</div>
+            <div class="small text-muted" id="rasterMetaCreated">Tanggal upload: -</div>
+            <div class="small text-muted" id="rasterMetaModel">Model: -</div>
+            <div class="small text-muted" id="rasterMetaSource">Sumber: -</div>
+            <div class="small text-muted" id="rasterMetaSize">Ukuran: -</div>
+            <div class="small text-muted" id="rasterMetaEpsg">EPSG: -</div>
+            <div class="small text-muted" id="rasterMetaStatus">Status tiles: -</div>
+            <div class="small text-muted" id="rasterMetaBbox">BBox: -</div>
+          </div>
+
+          <div class="mt-3 pt-3 border-top">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="small text-muted">ROI / Digitasi Area</div>
+              <button id="btnClearRoi" type="button" class="btn btn-outline-secondary btn-sm">Clear ROI</button>
+            </div>
+            <div class="small text-muted mt-2">Cara pakai AOI:</div>
+            <div class="small text-muted">1. Pilih raster terlebih dahulu.</div>
+            <div class="small text-muted">2. Klik ikon polygon di toolbar kanan atas peta.</div>
+            <div class="small text-muted">3. Gambar area yang ingin dianalisis, lalu klik titik awal untuk menutup polygon.</div>
+            <div class="small text-muted">4. Sistem akan menghitung luas ROI otomatis.</div>
+            <div class="small text-muted mt-2" id="roiAreaStatus">ROI belum dibuat.</div>
+            <div class="small text-muted" id="roiAreaMangrove">Mangrove ROI: -</div>
+            <div class="small text-muted" id="roiAreaNonMangrove">Non-mangrove ROI: -</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-card d-none" id="resultPanel">
+      <div class="card shadow"><div class="card-body py-2">
+        <div class="d-flex align-items-center gap-2">
+          <div id="resultBadge"></div>
+          <div>
+            <div class="fw-semibold" id="resultTitle">—</div>
+            <div class="small text-muted" id="resultNote">Klik pada peta untuk melihat klasifikasi.</div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="legend card shadow">
+      <div class="card-body py-2">
+        <div class="small"><span class="swatch"></span> Mangrove (hijau)</div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block body_end %}
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const map = L.map('map').setView([-5.5, 123.5], 6);
+    const basemaps = {
+      street: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 20, attribution: '&copy; OpenStreetMap &copy; CARTO'
+      }),
+      terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        maxZoom: 17, attribution: '&copy; OpenTopoMap contributors'
+      }),
+      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19, attribution: 'Tiles &copy; Esri'
+      }),
+    };
+    basemaps.street.addTo(map);
+
+    let vectorLayer=null, rasterTileLayer=null, currentRasterBounds=null, currentRasterId=null, currentRasterName=null;
+    let activeBasemap = basemaps.street;
+    const drawnItems = new L.FeatureGroup().addTo(map);
+    const drawControl = new L.Control.Draw({
+      position: 'topright',
+      edit: { featureGroup: drawnItems, remove: true },
+      draw: {
+        polygon: true,
+        rectangle: false,
+        circle: false,
+        marker: false,
+        circlemarker: false,
+        polyline: false,
+      },
+    });
+    map.addControl(drawControl);
+    const areaRasterName=document.getElementById('areaRasterName');
+    const mangroveAreaRow=document.getElementById('mangroveAreaRow');
+    const mangroveAreaKmRow=document.getElementById('mangroveAreaKmRow');
+    const mangroveAreaValue=document.getElementById('mangroveAreaValue');
+    const mangroveAreaKmValue=document.getElementById('mangroveAreaKmValue');
+    const nonMangroveAreaRow=document.getElementById('nonMangroveAreaRow');
+    const nonMangroveAreaKmRow=document.getElementById('nonMangroveAreaKmRow');
+    const nonMangroveAreaValue=document.getElementById('nonMangroveAreaValue');
+    const nonMangroveAreaKmValue=document.getElementById('nonMangroveAreaKmValue');
+    const rasterMetaCreated=document.getElementById('rasterMetaCreated');
+    const rasterMetaModel=document.getElementById('rasterMetaModel');
+    const rasterMetaSource=document.getElementById('rasterMetaSource');
+    const rasterMetaSize=document.getElementById('rasterMetaSize');
+    const rasterMetaEpsg=document.getElementById('rasterMetaEpsg');
+    const rasterMetaStatus=document.getElementById('rasterMetaStatus');
+    const rasterMetaBbox=document.getElementById('rasterMetaBbox');
+    const roiAreaStatus=document.getElementById('roiAreaStatus');
+    const roiAreaMangrove=document.getElementById('roiAreaMangrove');
+    const roiAreaNonMangrove=document.getElementById('roiAreaNonMangrove');
+
+    function normalizeBounds(b){ if(!b) return null;
+      const minx=Math.min(b.minx,b.maxx), maxx=Math.max(b.minx,b.maxx);
+      const miny=Math.min(b.miny,b.maxy), maxy=Math.max(b.miny,b.maxy);
+      return {minx,miny,maxx,maxy};
+    }
+
+    function formatArea(value){
+      if(value===null || value===undefined || Number.isNaN(Number(value))) return 'Belum tersedia';
+      return `${Number(value).toLocaleString('id-ID',{maximumFractionDigits:2})} ha`;
+    }
+
+    function formatAreaKm2(value){
+      if(value===null || value===undefined || Number.isNaN(Number(value))) return 'Belum tersedia';
+      return `${(Number(value) / 100).toLocaleString('id-ID',{maximumFractionDigits:2})} km²`;
+    }
+
+    function resetAreaInfo(){
+      areaRasterName.textContent='Belum ada raster dipilih';
+      mangroveAreaRow.style.display='';
+      mangroveAreaKmRow.style.display='';
+      nonMangroveAreaRow.style.display='';
+      nonMangroveAreaKmRow.style.display='';
+      mangroveAreaValue.textContent='-';
+      mangroveAreaKmValue.textContent='-';
+      nonMangroveAreaValue.textContent='-';
+      nonMangroveAreaKmValue.textContent='-';
+      rasterMetaCreated.textContent='Tanggal upload: -';
+      rasterMetaModel.textContent='Model: -';
+      rasterMetaSource.textContent='Sumber: -';
+      rasterMetaSize.textContent='Ukuran: -';
+      rasterMetaEpsg.textContent='EPSG: -';
+      rasterMetaStatus.textContent='Status tiles: -';
+      rasterMetaBbox.textContent='BBox: -';
+    }
+
+    async function loadRasterAreaInfo(id, name){
+      if(!id){
+        resetAreaInfo();
+        return;
+      }
+
+      areaRasterName.textContent=name || 'Raster terpilih';
+      mangroveAreaValue.textContent='Menghitung...';
+      nonMangroveAreaValue.textContent='Menghitung...';
+
+      try{
+        const r=await fetch(`/api/rasters/${id}/area/`);
+        if(!r.ok) throw new Error('Area request failed');
+        const data=await r.json();
+        const nonMangroveArea=Number(data.non_mangrove_area_ha ?? 0);
+        mangroveAreaValue.textContent=formatArea(data.mangrove_area_ha);
+        mangroveAreaKmValue.textContent=formatAreaKm2(data.mangrove_area_ha);
+        if(nonMangroveArea > 0){
+          nonMangroveAreaRow.style.display='';
+          nonMangroveAreaKmRow.style.display='';
+          nonMangroveAreaValue.textContent=formatArea(nonMangroveArea);
+          nonMangroveAreaKmValue.textContent=formatAreaKm2(nonMangroveArea);
+        }else{
+          nonMangroveAreaRow.style.display='none';
+          nonMangroveAreaKmRow.style.display='none';
+          nonMangroveAreaValue.textContent='-';
+          nonMangroveAreaKmValue.textContent='-';
+        }
+        rasterMetaCreated.textContent=`Tanggal upload: ${data.created_at ? new Date(data.created_at).toLocaleString('id-ID') : '-'}`;
+        rasterMetaModel.textContent=`Model: ${data.model_name || '-'}`;
+        rasterMetaSource.textContent=`Sumber: ${data.source_label || '-'}`;
+        rasterMetaSize.textContent=`Ukuran: ${data.width ?? '-'} x ${data.height ?? '-'} px`;
+        rasterMetaEpsg.textContent=`EPSG: ${data.epsg ?? '-'}`;
+        rasterMetaStatus.textContent=`Status tiles: ${data.tiles_status || '-'}`;
+        const bbox = data.bbox || {};
+        rasterMetaBbox.textContent=`BBox: ${bbox.minx ?? '-'}, ${bbox.miny ?? '-'}, ${bbox.maxx ?? '-'}, ${bbox.maxy ?? '-'}`;
+      }catch{
+        nonMangroveAreaRow.style.display='';
+        nonMangroveAreaKmRow.style.display='';
+        mangroveAreaValue.textContent='Gagal memuat';
+        mangroveAreaKmValue.textContent='Gagal memuat';
+        nonMangroveAreaValue.textContent='Gagal memuat';
+        nonMangroveAreaKmValue.textContent='Gagal memuat';
+      }
+    }
+
+    async function loadRoiArea(geojson){
+      if(!currentRasterId){
+        roiAreaStatus.textContent='Pilih raster terlebih dahulu.';
+        return;
+      }
+      roiAreaStatus.textContent='Menghitung luas ROI...';
+      try{
+        const response = await fetch(`/api/rasters/${currentRasterId}/roi-area/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ geojson }),
+        });
+        if(!response.ok) throw new Error('ROI area failed');
+        const data = await response.json();
+        roiAreaStatus.textContent='Luas ROI berhasil dihitung.';
+        roiAreaMangrove.textContent=`Mangrove ROI: ${formatArea(data.mangrove_area_ha)} (${formatAreaKm2(data.mangrove_area_ha)})`;
+        const nonMangrove = Number(data.non_mangrove_area_ha ?? 0);
+        roiAreaNonMangrove.textContent = nonMangrove > 0
+          ? `Non-mangrove ROI: ${formatArea(nonMangrove)} (${formatAreaKm2(nonMangrove)})`
+          : 'Non-mangrove ROI: 0';
+      }catch{
+        roiAreaStatus.textContent='Gagal menghitung luas ROI.';
+      }
+    }
+
+    async function loadRasters(){
+      const r=await fetch('/api/rasters/'); const items=await r.json();
+      const sel=document.getElementById('rasterSelect');
+      items.forEach(it=>{
+        const o=document.createElement('option');
+        o.value=String(it.id); o.textContent=it.name;
+        o.dataset.minx=it.minx; o.dataset.miny=it.miny;
+        o.dataset.maxx=it.maxx; o.dataset.maxy=it.maxy;
+        o.dataset.createdAt=it.created_at;
+        o.dataset.tilesStatus=it.tiles_status;
+        o.dataset.tilesMessage=it.tiles_message;
+        o.dataset.fileName=it.file_name;
+        o.dataset.modelName=it.model_name;
+        sel.appendChild(o);
+      });
+      if(items.length && !sel.value){ sel.value=String(items[0].id); sel.dispatchEvent(new Event('change')); }
+    }
+
+    function applyRasterByTiles(id,rawBounds,name){
+      if(rasterTileLayer){ map.removeLayer(rasterTileLayer); rasterTileLayer=null; }
+      currentRasterId=id||null; currentRasterName=name||null; currentRasterBounds=null;
+      if(!id) return;
+      const tilesUrl=`/media/tiles/raster_${id}/{z}/{x}/{y}.png`;
+      const nb=normalizeBounds(rawBounds);
+      currentRasterBounds=nb? L.latLngBounds([[nb.miny,nb.minx],[nb.maxy,nb.maxx]]) : null;
+      rasterTileLayer=L.tileLayer(tilesUrl,{
+        opacity: parseFloat(document.getElementById('opacity').value),
+        maxZoom:22, maxNativeZoom:14, noWrap:true, tms:false,
+        bounds:(currentRasterBounds||undefined),
+        errorTileUrl:'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
+      }).addTo(map);
+      if(currentRasterBounds) map.fitBounds(currentRasterBounds);
+    }
+
+    async function loadVectors(){
+      const chk=document.getElementById('chkViewBbox').checked;
+      const q=document.getElementById('txtSearch').value.trim();
+      let url='/api/mangroves/'; const p=[];
+      if(chk){ const b=map.getBounds(); p.push(`in_bbox=${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`); }
+      if(q) p.push(`search=${encodeURIComponent(q)}`);
+      if(p.length) url+='?'+p.join('&');
+      const r=await fetch(url); const gj=await r.json();
+      if(vectorLayer) map.removeLayer(vectorLayer);
+      vectorLayer=L.geoJSON(gj,{ onEachFeature:(f,l)=>{
+        const p=f.properties||{};
+        l.bindPopup(`<b>${p.name??'Site'}</b><br>Species: ${p.species??'-'}<br>Canopy: ${p.canopy_cover??'-'}%<br>Source: ${p.source??'-'}`);
+      }, style:()=>({weight:1})}).addTo(map);
+    }
+
+    document.getElementById('btnApply').addEventListener('click',loadVectors);
+    document.getElementById('basemapSelect').addEventListener('change', (e) => {
+      const next = basemaps[e.target.value];
+      if(!next || next === activeBasemap) return;
+      map.removeLayer(activeBasemap);
+      next.addTo(map);
+      activeBasemap = next;
+    });
+    document.getElementById('rasterSelect').addEventListener('change',e=>{
+      const sel=e.target, id=sel.value; let bounds=null;
+      if(id && sel.selectedOptions.length){ const o=sel.selectedOptions[0].dataset;
+        bounds={minx:+o.minx,miny:+o.miny,maxx:+o.maxx,maxy:+o.maxy}; }
+      const name=sel.selectedOptions.length? sel.selectedOptions[0].textContent : null;
+      loadRasterAreaInfo(id, name);
+      applyRasterByTiles(id,bounds,name);
+    });
+    document.getElementById('btnClearRoi').addEventListener('click', () => {
+      drawnItems.clearLayers();
+      roiAreaStatus.textContent='ROI belum dibuat.';
+      roiAreaMangrove.textContent='Mangrove ROI: -';
+      roiAreaNonMangrove.textContent='Non-mangrove ROI: -';
+    });
+    document.getElementById('btnZoom').addEventListener('click',()=>{ if(currentRasterBounds) map.fitBounds(currentRasterBounds); });
+    document.getElementById('opacity').addEventListener('input',e=>{
+      const v=+e.target.value; document.getElementById('opv').textContent=v.toFixed(2);
+      if(rasterTileLayer) rasterTileLayer.setOpacity(v);
+    });
+
+    // Klik klasifikasi (baca piksel tile)
+    const resultPanel=document.getElementById('resultPanel');
+    const resultBadge=document.getElementById('resultBadge');
+    const resultTitle=document.getElementById('resultTitle');
+    const resultNote=document.getElementById('resultNote');
+    const hiddenCanvas=document.createElement('canvas'); hiddenCanvas.width=256; hiddenCanvas.height=256;
+    const hctx=hiddenCanvas.getContext('2d');
+
+    function lon2tile(lon,z){ return Math.floor((lon+180)/360*Math.pow(2,z)); }
+    function lat2tile(lat,z){ const r=lat*Math.PI/180; return Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z)); }
+
+    function showResult(isMangrove, latlng, note){
+      resultPanel.classList.remove('d-none');
+      if(isMangrove===true){
+        resultBadge.innerHTML='<span class="badge text-bg-success">Mangrove</span>';
+        resultTitle.textContent='Lokasi terklasifikasi sebagai mangrove';
+        resultNote.textContent=`Koordinat: ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}.`;
+      } else if(isMangrove===false){
+        resultBadge.innerHTML='<span class="badge text-bg-secondary">Non-mangrove</span>';
+        resultTitle.textContent='Lokasi terklasifikasi sebagai non-mangrove';
+        resultNote.textContent=`Koordinat: ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}.`;
+      } else {
+        resultBadge.innerHTML='<span class="badge text-bg-warning">Info</span>';
+        resultTitle.textContent='Tidak dapat menentukan';
+        resultNote.textContent=note??'Coba zoom in lalu klik ulang.';
+      }
+    }
+
+    map.on('click', async (e)=>{
+      if(!currentRasterId) return;
+      const z=Math.round(map.getZoom());
+      const x=lon2tile(e.latlng.lng,z), y=lat2tile(e.latlng.lat,z);
+      const url=`/media/tiles/raster_${currentRasterId}/${z}/${x}/${y}.png`;
+      const p=map.project(e.latlng,z);
+      const px=Math.floor(p.x - x*256), py=Math.floor(p.y - y*256);
+      const img=new Image(); img.crossOrigin='anonymous';
+      img.onload=()=>{ try{
+        hctx.clearRect(0,0,256,256); hctx.drawImage(img,0,0);
+        const d=hctx.getImageData(px,py,1,1).data;
+        const isMangrove=(d[3]>0)||(d[1]>150); showResult(isMangrove,e.latlng);
+      }catch{ showResult(null,e.latlng,'Tidak bisa membaca piksel.'); } };
+      img.onerror=()=>showResult(null,e.latlng,'Tile tidak tersedia.');
+      img.src=url;
+    });
+
+    map.on(L.Draw.Event.CREATED, (event) => {
+      drawnItems.clearLayers();
+      const layer = event.layer;
+      drawnItems.addLayer(layer);
+      loadRoiArea(layer.toGeoJSON());
+    });
+
+    map.on(L.Draw.Event.EDITED, () => {
+      const layer = drawnItems.getLayers()[0];
+      if(layer) loadRoiArea(layer.toGeoJSON());
+    });
+
+    map.on(L.Draw.Event.DELETED, () => {
+      roiAreaStatus.textContent='ROI belum dibuat.';
+      roiAreaMangrove.textContent='Mangrove ROI: -';
+      roiAreaNonMangrove.textContent='Non-mangrove ROI: -';
+    });
+
+    loadRasters();
+    loadVectors();
+  });
+  </script>
+{% endblock %}

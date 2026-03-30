@@ -1,0 +1,292 @@
+{% extends "mangroves/base.html" %}
+{% block title %}Tentang Sistem | Mangrove Viewer{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <h1 class="mb-4 text-center">Tentang Sistem Mangrove Viewer</h1>
+
+  <!-- Intro: ringkas -->
+  <p class="lead text-justify">
+    <strong>Mangrove Viewer</strong> membantu memantau tutupan mangrove dari citra satelit
+    menggunakan pembelajaran mesin. Tujuannya sederhana: <em>membuat bukti spasial
+    yang mudah dipahami</em> untuk perencanaan restorasi, mitigasi perubahan iklim,
+    dan pengelolaan pesisir yang berkelanjutan.
+  </p>
+
+  <!-- Interaksi dipindah ke bagian pengantar mangrove (Accordion FAQ) -->
+  <div class="accordion my-4" id="faqMangrove">
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="q1">
+        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#a1" aria-expanded="true" aria-controls="a1">
+          Apa itu mangrove dan mengapa penting?
+        </button>
+      </h2>
+      <div id="a1" class="accordion-collapse collapse show" aria-labelledby="q1" data-bs-parent="#faqMangrove">
+        <div class="accordion-body">
+          <p class="mb-2">
+            <strong>Mangrove</strong> adalah hutan pesisir yang tumbuh di daerah pasang surut.
+            Akar tunjangnya menahan sedimen, melindungi garis pantai dari abrasi dan badai,
+            serta menjadi <em>nursery ground</em> bagi ikan dan biota lain.
+          </p>
+          <ul class="mb-2">
+            <li><strong>Perisai alami</strong>: meredam energi gelombang & badai.</li>
+            <li><strong>Penyimpan karbon biru</strong>: menyerap & mengunci karbon dalam tanah jenuh.</li>
+            <li><strong>Penopang ekonomi lokal</strong>: perikanan, ekowisata, bahan baku.</li>
+            <li><strong>Keanekaragaman hayati</strong>: habitat penting burung, reptil, dan invertebrata.</li>
+          </ul>
+          <p class="mb-0 small text-muted">
+            Kesimpulan: melindungi mangrove berarti melindungi manusia, ekonomi, dan iklim.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="q2">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a2" aria-expanded="false" aria-controls="a2">
+          Ancaman utama mangrove saat ini
+        </button>
+      </h2>
+      <div id="a2" class="accordion-collapse collapse" aria-labelledby="q2" data-bs-parent="#faqMangrove">
+        <div class="accordion-body">
+          <ul class="mb-2">
+            <li><strong>Alih fungsi lahan</strong> (tambak, permukiman, industri).</li>
+            <li><strong>Pencemaran</strong> (limbah, plastik, sedimen berlebihan).</li>
+            <li><strong>Tekanan iklim</strong> (kenaikan muka laut, badai lebih sering).</li>
+            <li><strong>Penebangan & fragmentasi</strong> yang melemahkan regenerasi.</li>
+          </ul>
+          <p class="mb-0">
+            <em>Monitoring berbasis citra</em> memungkinkan deteksi perubahan lebih dini
+            dan prioritisasi lokasi restorasi.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="q3">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a3" aria-expanded="false" aria-controls="a3">
+          Bagaimana sistem ini bekerja (alur non-teknis)?
+        </button>
+      </h2>
+      <div id="a3" class="accordion-collapse collapse" aria-labelledby="q3" data-bs-parent="#faqMangrove">
+        <div class="accordion-body">
+          <ol class="mb-3">
+            <li><strong>Kumpulkan citra</strong> Sentinel-2 + data medan (kemiringan).</li>
+            <li><strong>Ubah warna ke angka</strong>: hitung indikator vegetasi & kelembapan (mis. NDVI, NDMI).</li>
+            <li><strong>Latih model</strong> dengan contoh titik (mangrove / bukan).</li>
+            <li><strong>Uji adil</strong> (5-fold cross-validation) agar hasil stabil, tidak kebetulan.</li>
+            <li><strong>Buat peta</strong>: setiap piksel diputuskan “mangrove” atau “non-mangrove”.</li>
+          </ol>
+          <div class="alert alert-success mb-0">
+            Hasil akhirnya berupa <strong>peta bukti</strong> yang bisa dilihat di halaman <a href="/map/">Peta</a>,
+            memudahkan diskusi lintas pihak (pemerintah, peneliti, masyarakat).
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="my-5">
+
+  <!-- Metodologi klasifikasi: narasi non-teknis -->
+  <h2 class="mb-3">🔍 Metodologi Klasifikasi (Bahasa Sederhana)</h2>
+  <p class="text-justify">
+    Setiap piksel citra disulap menjadi “profil angka” yang menggambarkan kehijauan,
+    kelembapan, dan konteks lahan. <em>Mesin pembelajar</em> mempelajari pola
+    khas mangrove dari contoh data lapangan, lalu menerapkan pola itu ke seluruh area.
+    Untuk menjaga keadilan, kami membagi data pelatihan menjadi 5 bagian dan menguji
+    secara bergiliran (<strong>5-Fold Cross Validation</strong>), sehingga angka kinerja
+    tidak bias ke satu pembagian saja.
+  </p>
+
+  <!-- Interaksi kedua: Model selector (client-side, ringan) -->
+  <div class="row g-3 align-items-stretch my-3">
+    <div class="col-md-5">
+      <label for="modelSelect" class="form-label">Lihat karakter tiap model (ringkas)</label>
+      <select id="modelSelect" class="form-select">
+        <option value="lr">Logistic Regression</option>
+        <option value="knn">K-Nearest Neighbors</option>
+        <option value="dt">Decision Tree</option>
+        <option value="nb">Naive Bayes</option>
+        <option value="rf">Random Forest</option>
+        <option value="ada">AdaBoost</option>
+        <option value="xgb">XGBoost</option>
+        <option value="lgbm">LightGBM</option>
+        <option value="cat">CatBoost</option>
+        <option value="svm">SVM (RBF)</option>
+        <option value="mlp">Neural Network (MLP)</option>
+      </select>
+      <div class="form-text">
+        Pilih model untuk melihat kelebihan, kekurangan, dan kapan cocok digunakan.
+      </div>
+    </div>
+    <div class="col-md-7">
+      <div id="modelCard" class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 id="mTitle" class="card-title mb-2">Logistic Regression</h5>
+          <p id="mDesc" class="mb-2">
+            Sederhana, cepat, dan mudah dijelaskan. Cocok sebagai baseline transparan.
+          </p>
+          <ul class="mb-0 small" id="mBullets">
+            <li>Kuat untuk pola yang relatif linear.</li>
+            <li>Risiko underfit bila pola sangat kompleks.</li>
+            <li>Baik untuk komunikasi kebijakan karena interpretabel.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data & fitur (jelas, tetap non-teknis) -->
+  <div class="row g-4 mt-1">
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Data yang Dipakai</h5>
+          <ul class="mb-2">
+            <li>Sentinel-2 (multispektral)</li>
+            <li>Model Elevasi → Kemiringan (lereng)</li>
+            <li>Sampel titik: “mangrove/non-mangrove”</li>
+          </ul>
+          <p class="small text-muted mb-0">Semua diolah ke sistem koordinat peta dunia (EPSG:4326) dan disajikan sebagai tiles XYZ agar peta responsif.</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Indikator yang Dibaca</h5>
+          <ul class="mb-2">
+            <li><strong>Hijau & sehat</strong> (NDVI)</li>
+            <li><strong>Kelembapan kanopi</strong> (NDMI)</li>
+            <li><strong>Kontras kanal-kanopi</strong> (MVI/CMRI/NIMI)</li>
+            <li><strong>Konteks lahan</strong> (Kemiringan)</li>
+          </ul>
+          <p class="small text-muted mb-0">Bukan sekadar warna: angka-angka ini merangkum “sinyal biologis” yang khas pada mangrove.</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Keluaran & Batasan</h5>
+          <ul class="mb-2">
+            <li>Peta biner: <em>mangrove</em> vs <em>non-mangrove</em>.</li>
+            <li>Akurasi dipengaruhi awan, bayangan, pasang-surut, musim.</li>
+            <li>Validasi lapangan tetap penting untuk keputusan akhir.</li>
+          </ul>
+          <p class="small text-muted mb-0">Gunakan peta sebagai <strong>bukti awal</strong> untuk dialog lintas pihak, bukan satu-satunya sumber kebenaran.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="my-5">
+
+  <!-- Nilai & dampak -->
+  <h2 class="mb-3">🌱 Manfaat & Dampak</h2>
+  <p>
+    Monitoring mangrove yang cepat membantu memetakan prioritas restorasi,
+    mendukung perencanaan pesisir, dan memperkuat argumen kebijakan berbasis bukti.
+    Karena rancangan sistem ini <em>reproducible</em>, daerah lain dapat diterapkan
+    dengan alur serupa.
+  </p>
+  <div class="alert alert-info">
+    <strong>Transparansi:</strong> Kami mengutamakan prinsip <em>open science</em>.
+    Alur kerja dapat dijelaskan ke publik dan diulang secara konsisten dari waktu ke waktu.
+  </div>
+
+  <hr class="my-5">
+
+  <!-- Catatan singkat terkait skrip yang kamu berikan (narasi non-teknis) -->
+  <h2 class="mb-3">🧭 Catatan Metodologi (dari Skrip Klasifikasi)</h2>
+  <ul>
+    <li><strong>Multi-model:</strong> Beberapa pendekatan (Regresi Logistik, KNN, Pohon Keputusan, Naive Bayes, Random Forest, AdaBoost, XGBoost, LightGBM, CatBoost, SVM, Neural Network) diuji agar tidak tergantung satu metode.</li>
+    <li><strong>Uji adil 5-Fold:</strong> Data dibagi 5 bagian dan diuji bergiliran untuk hasil yang stabil.</li>
+    <li><strong>Metrik yang digunakan:</strong> akurasi, presisi, recall, dan F1-score—mudah dipahami & seimbang.</li>
+    <li><strong>Prediksi skala piksel:</strong> Setelah belajar dari contoh titik, model memutuskan tiap piksel menjadi “mangrove/non-mangrove”.</li>
+    <li><strong>Visualisasi:</strong> Hasil disimpan sebagai GeoTIFF dan dirender sebagai tiles agar peta responsif di web.</li>
+  </ul>
+</div>
+{% endblock %}
+
+{% block body_end %}
+<script>
+  // Interaksi ringan: Model selector (ubah deskripsi tanpa memuat ulang halaman)
+  const modelInfo = {
+    lr: {
+      t: "Logistic Regression",
+      d: "Sederhana, cepat, dan mudah dijelaskan. Cocok sebagai baseline transparan.",
+      b: ["Kuat untuk pola linear", "Risiko underfit jika pola kompleks", "Baik untuk komunikasi kebijakan"]
+    },
+    knn: {
+      t: "K-Nearest Neighbors",
+      d: "Menilai kemiripan dengan tetangga terdekat. Intuitif, tapi lebih berat di prediksi.",
+      b: ["Tidak butuh pelatihan rumit", "Sensitif ke skala fitur", "Kurang efisien pada area sangat luas"]
+    },
+    dt: {
+      t: "Decision Tree",
+      d: "Aturan if-else bertingkat. Mudah diinterpretasi, tapi rentan overfit.",
+      b: ["Sangat interpretabel", "Butuh pruning/ensemble", "Baik untuk komunikasi non-teknis"]
+    },
+    nb: {
+      t: "Naive Bayes",
+      d: "Probabilistik sederhana. Cepat, efektif pada pola tertentu.",
+      b: ["Cepat & ringan", "Asumsi independensi kuat", "Baik untuk baseline"]
+    },
+    rf: {
+      t: "Random Forest",
+      d: "Ensemble banyak pohon. Umumnya akurat dan tahan overfit.",
+      b: ["Kinerja stabil", "Kurang transparan vs pohon tunggal", "Cocok untuk data beragam"]
+    },
+    ada: {
+      t: "AdaBoost",
+      d: "Menggabungkan model lemah berurutan. Baik untuk perbaikan bertahap.",
+      b: ["Efektif pada noise moderat", "Sensitif outlier", "Butuh tuning"]
+    },
+    xgb: {
+      t: "XGBoost",
+      d: "Boosting efisien & kuat. Sering unggul pada tabular data.",
+      b: ["Akurat & cepat", "Perlu tuning", "Kurang interpretabel"]
+    },
+    lgbm: {
+      t: "LightGBM",
+      d: "Boosting cepat pada data besar. Skalabilitas baik.",
+      b: ["Sangat cepat", "Perlu perhatian pada overfit", "Bagus untuk eksperimen cepat"]
+    },
+    cat: {
+      t: "CatBoost",
+      d: "Boosting ramah kategori, stabil di default.",
+      b: ["Performa kuat", "Waktu latih moderat", "Cocok saat fitur beragam"]
+    },
+    svm: {
+      t: "SVM (RBF)",
+      d: "Memisahkan kelas dengan margin maksimal. Kuat pada batas kompleks.",
+      b: ["Akurat pada pola non-linear", "Kurang skalabel untuk data super besar", "Perlu skala fitur baik"]
+    },
+    mlp: {
+      t: "Neural Network (MLP)",
+      d: "Belajar representasi dari data. Fleksibel namun perlu data & tuning.",
+      b: ["Fleksibel", "Perlu komputasi & tuning", "Risiko overfit bila data sedikit"]
+    }
+  };
+
+  function setModel(key) {
+    const m = modelInfo[key];
+    document.getElementById("mTitle").textContent = m.t;
+    document.getElementById("mDesc").textContent  = m.d;
+    const ul = document.getElementById("mBullets");
+    ul.innerHTML = "";
+    m.b.forEach(item => {
+      const li = document.createElement("li");
+      li.textContent = item;
+      ul.appendChild(li);
+    });
+  }
+
+  document.getElementById("modelSelect").addEventListener("change", (e) => setModel(e.target.value));
+  // set default
+  setModel("lr");
+</script>
+{% endblock %}

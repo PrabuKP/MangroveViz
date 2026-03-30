@@ -1,0 +1,433 @@
+{% extends "mangroves/base.html" %}
+{% block title %}Management Data | Mangrove Viewer{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3 mb-4">
+    <div>
+      <h1 class="mb-1">Management Data</h1>
+      <p class="text-muted mb-0">Role Anda: <strong class="text-uppercase">{{ user_role }}</strong>. Viewer hanya melihat peta, editor dapat upload dan edit data, admin dapat hapus data dan mengubah role user.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-secondary" href="{% url 'viewer' %}">Buka Peta</a>
+      <a class="btn btn-outline-primary" href="{% url 'export-rasters' %}">Export CSV Raster</a>
+      <a class="btn btn-outline-primary" href="{% url 'export-mangroves' %}">Export GeoJSON Vektor</a>
+      {% if request.user.is_superuser %}
+        <a class="btn btn-outline-dark" href="/admin/">Admin Django</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-md-3">
+      <div class="card h-100 shadow-sm border-0">
+        <div class="card-body">
+          <div class="text-muted small">Raster Total</div>
+          <div class="display-6 fw-semibold">{{ stats.raster_total }}</div>
+          <div class="small text-muted">Ready: {{ stats.raster_ready }} | Queue/Process: {{ stats.raster_processing }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card h-100 shadow-sm border-0">
+        <div class="card-body">
+          <div class="text-muted small">Vector Sites</div>
+          <div class="display-6 fw-semibold">{{ stats.mangrove_total }}</div>
+          <div class="small text-muted">Titik mangrove tersimpan</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card h-100 shadow-sm border-0">
+        <div class="card-body">
+          <div class="text-muted small">Users</div>
+          <div class="display-6 fw-semibold">{{ stats.user_total }}</div>
+          <div class="small text-muted">Viewer: {{ stats.viewer_total }} | Editor: {{ stats.editor_total }} | Admin: {{ stats.admin_total }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card h-100 shadow-sm border-0">
+        <div class="card-body">
+          <div class="text-muted small">Cached Mangrove Area</div>
+          <div class="display-6 fw-semibold">{{ stats.cached_layers }}</div>
+          <div class="small text-muted">{{ stats.cached_mangrove_area_ha|floatformat:2 }} ha tersimpan di cache</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+          <h2 class="h4 mb-3">Upload Raster Baru</h2>
+          <form id="uploadForm" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="upload_raster">
+
+            <div class="mb-3">
+              <label for="{{ upload_form.name.id_for_label }}" class="form-label">Nama Layer</label>
+              {{ upload_form.name }}
+              {% if upload_form.name.errors %}
+                <div class="text-danger small mt-1">{{ upload_form.name.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="{{ upload_form.file.id_for_label }}" class="form-label">File GeoTIFF</label>
+              {{ upload_form.file }}
+              {% if upload_form.file.errors %}
+                <div class="text-danger small mt-1">{{ upload_form.file.errors|join:", " }}</div>
+              {% endif %}
+              <div class="form-text">Validasi sekarang mengecek GeoTIFF, jumlah band, dan nilai raster biner 0/1 sebelum file diproses.</div>
+            </div>
+
+            <div class="progress mb-3 d-none" id="uploadProgressWrap" aria-hidden="true">
+              <div id="uploadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%">0%</div>
+            </div>
+            <div id="uploadStatusText" class="small text-muted mb-3"></div>
+
+            <button type="submit" class="btn btn-success">Upload Raster</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h4 mb-0">{% if edit_site %}Edit Data Vektor{% else %}Tambah Data Vektor{% endif %}</h2>
+            {% if edit_site %}
+              <a class="btn btn-outline-secondary btn-sm" href="{% url 'management' %}">Batal Edit</a>
+            {% endif %}
+          </div>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="save_site">
+            {% if edit_site %}
+              <input type="hidden" name="site_id" value="{{ edit_site.id }}">
+            {% endif %}
+
+            <div class="mb-3">
+              <label class="form-label" for="{{ vector_form.name.id_for_label }}">Nama Lokasi</label>
+              {{ vector_form.name }}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ vector_form.species.id_for_label }}">Spesies</label>
+              {{ vector_form.species }}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ vector_form.canopy_cover.id_for_label }}">Canopy Cover (%)</label>
+              {{ vector_form.canopy_cover }}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ vector_form.source.id_for_label }}">Sumber</label>
+              {{ vector_form.source }}
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label" for="{{ vector_form.latitude.id_for_label }}">Latitude</label>
+                {{ vector_form.latitude }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="{{ vector_form.longitude.id_for_label }}">Longitude</label>
+                {{ vector_form.longitude }}
+              </div>
+            </div>
+            {% if vector_form.errors %}
+              <div class="alert alert-danger mt-3 mb-0">
+                {% for field, errors in vector_form.errors.items %}
+                  <div>{{ field }}: {{ errors|join:", " }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+            <button type="submit" class="btn btn-primary mt-3">{% if edit_site %}Update Vektor{% else %}Simpan Vektor{% endif %}</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h4 mb-0">Daftar Raster</h2>
+            <span class="badge text-bg-secondary">{{ rasters|length }} item</span>
+          </div>
+          {% if rasters %}
+            <div class="table-responsive">
+              <table class="table align-middle" id="rasterTable">
+                <thead>
+                  <tr>
+                    <th>Nama</th>
+                    <th>Status</th>
+                    <th>Metadata</th>
+                    <th>Audit</th>
+                    <th class="text-end">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for raster in rasters %}
+                    <tr data-raster-id="{{ raster.id }}">
+                      <td>
+                        <div class="fw-semibold">{{ raster.name }}</div>
+                        <div class="small text-muted">{{ raster.file.name }}</div>
+                        <div class="small text-muted">Model: {{ raster.source_label }}</div>
+                      </td>
+                      <td data-col="status">
+                        {% if raster.tiles_status == "ok" %}
+                          <span class="badge text-bg-success">Ready</span>
+                        {% elif raster.tiles_status == "error" %}
+                          <span class="badge text-bg-danger">Error</span>
+                        {% elif raster.tiles_status == "processing" %}
+                          <span class="badge text-bg-warning">Processing</span>
+                        {% else %}
+                          <span class="badge text-bg-secondary">{{ raster.tiles_status|default:"none" }}</span>
+                        {% endif %}
+                        <div class="small text-muted mt-1">{{ raster.tiles_message|default:"Belum ada status." }}</div>
+                      </td>
+                      <td class="small text-muted" data-col="meta">
+                        EPSG: {{ raster.epsg|default:"-" }}<br>
+                        {{ raster.width|default:"-" }} x {{ raster.height|default:"-" }} px<br>
+                        Created: {{ raster.created_at|date:"Y-m-d H:i" }}
+                      </td>
+                      <td class="small text-muted" data-col="audit">
+                        Version: {{ raster.audit_info.version|default:"-" }}<br>
+                        User: {{ raster.audit_info.user|default:"-" }}
+                      </td>
+                      <td class="text-end">
+                        {% if can_delete %}
+                          <form method="post" onsubmit="return confirm('Hapus raster {{ raster.name }}?');">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_raster">
+                            <input type="hidden" name="raster_id" value="{{ raster.id }}">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                          </form>
+                        {% else %}
+                          <span class="small text-muted">Admin only</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="alert alert-light border mb-0">Belum ada raster.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h4 mb-0">Data Vektor Mangrove</h2>
+            <span class="badge text-bg-secondary">{{ vectors|length }} item</span>
+          </div>
+          {% if vectors %}
+            <div class="table-responsive">
+              <table class="table align-middle">
+                <thead>
+                  <tr>
+                    <th>Nama</th>
+                    <th>Spesies</th>
+                    <th>Koordinat</th>
+                    <th class="text-end">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for site in vectors %}
+                    <tr>
+                      <td>
+                        <div class="fw-semibold">{{ site.name }}</div>
+                        <div class="small text-muted">Source: {{ site.source|default:"-" }}</div>
+                      </td>
+                      <td>{{ site.species|default:"-" }}</td>
+                      <td class="small text-muted">
+                        {{ site.geometry.y|floatformat:5 }}, {{ site.geometry.x|floatformat:5 }}
+                      </td>
+                      <td class="text-end">
+                        <a class="btn btn-outline-primary btn-sm" href="{% url 'management' %}?edit_site={{ site.id }}">Edit</a>
+                        {% if can_delete %}
+                          <form method="post" class="d-inline-block ms-1" onsubmit="return confirm('Hapus data vektor {{ site.name }}?');">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_site">
+                            <input type="hidden" name="site_id" value="{{ site.id }}">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                          </form>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="alert alert-light border mb-0">Belum ada data vektor.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if can_manage_users %}
+        <div class="card shadow-sm border-0">
+          <div class="card-body">
+            <h2 class="h4 mb-3">Kelola Role User</h2>
+            <div class="table-responsive">
+              <table class="table align-middle">
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role Saat Ini</th>
+                    <th>Assign Role</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in users %}
+                    <tr>
+                      <td>{{ item.username }}</td>
+                      <td>{{ item.email|default:"-" }}</td>
+                      <td><span class="badge text-bg-light text-uppercase">{{ item.role_label }}</span></td>
+                      <td>
+                        <form method="post" class="d-flex gap-2 align-items-center">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="update_user_role">
+                          <input type="hidden" name="user_id" value="{{ item.id }}">
+                          <select name="role" class="form-select form-select-sm" style="max-width: 160px;">
+                            <option value="viewer" {% if item.role_label == "viewer" %}selected{% endif %}>viewer</option>
+                            <option value="editor" {% if item.role_label == "editor" %}selected{% endif %}>editor</option>
+                            <option value="admin" {% if item.role_label == "admin" %}selected{% endif %}>admin</option>
+                          </select>
+                          <button type="submit" class="btn btn-outline-primary btn-sm">Simpan</button>
+                        </form>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0 mt-4">
+    <div class="card-body">
+      <h2 class="h5 mb-3">Riwayat dan Audit</h2>
+      {% if recent_audits %}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Waktu</th>
+                <th>User</th>
+                <th>Aksi</th>
+                <th>Raster</th>
+                <th>Version</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in recent_audits %}
+                <tr>
+                  <td class="small text-muted">{{ item.timestamp }}</td>
+                  <td>{{ item.user }}</td>
+                  <td><span class="badge text-bg-light">{{ item.action }}</span></td>
+                  <td>{{ item.raster_name }}</td>
+                  <td>{{ item.version|default:"-" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="alert alert-light border mb-0">Belum ada audit log.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_end %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    ['id_name', 'id_file', 'id_species', 'id_canopy_cover', 'id_source', 'id_latitude', 'id_longitude'].forEach((id) => {
+      const input = document.getElementById(id);
+      if (input) input.classList.add('form-control');
+    });
+
+    const form = document.getElementById('uploadForm');
+    const progressWrap = document.getElementById('uploadProgressWrap');
+    const progressBar = document.getElementById('uploadProgressBar');
+    const statusText = document.getElementById('uploadStatusText');
+
+    function renderStatusBadge(status){
+      if(status === 'ok') return '<span class="badge text-bg-success">Ready</span>';
+      if(status === 'error') return '<span class="badge text-bg-danger">Error</span>';
+      if(status === 'processing') return '<span class="badge text-bg-warning">Processing</span>';
+      if(status === 'pending') return '<span class="badge text-bg-secondary">Queued</span>';
+      return `<span class="badge text-bg-secondary">${status || 'none'}</span>`;
+    }
+
+    async function refreshRasterStatuses(){
+      const response = await fetch('{% url "management-status" %}');
+      const data = await response.json();
+      const rows = document.querySelectorAll('#rasterTable tbody tr[data-raster-id]');
+      rows.forEach((row) => {
+        const rasterId = Number(row.dataset.rasterId);
+        const item = data.items.find((entry) => entry.id === rasterId);
+        if(!item) return;
+        row.querySelector('[data-col="status"]').innerHTML = `${renderStatusBadge(item.tiles_status)}<div class="small text-muted mt-1">${item.tiles_message || 'Belum ada status.'}</div>`;
+        row.querySelector('[data-col="meta"]').innerHTML = `EPSG: ${item.epsg ?? '-'}<br>${item.width ?? '-'} x ${item.height ?? '-'} px<br>Created: ${item.created_at ? new Date(item.created_at).toLocaleString('id-ID') : '-'}`;
+        row.querySelector('[data-col="audit"]').innerHTML = `Version: ${item.version ?? '-'}<br>User: ${item.user ?? '-'}`;
+      });
+    }
+
+    if(form){
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const xhr = new XMLHttpRequest();
+        const formData = new FormData(form);
+        progressWrap.classList.remove('d-none');
+        progressBar.classList.remove('bg-danger');
+        progressBar.classList.add('progress-bar-animated');
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+        statusText.textContent = 'Mengunggah raster...';
+
+        xhr.upload.addEventListener('progress', (e) => {
+          if(!e.lengthComputable) return;
+          const percent = Math.round((e.loaded / e.total) * 100);
+          progressBar.style.width = `${percent}%`;
+          progressBar.textContent = `${percent}%`;
+        });
+
+        xhr.onreadystatechange = async () => {
+          if(xhr.readyState !== 4) return;
+          if(xhr.status >= 200 && xhr.status < 300){
+            statusText.textContent = 'Upload selesai. Status background akan diperbarui otomatis.';
+            progressBar.classList.remove('progress-bar-animated');
+            await refreshRasterStatuses();
+            window.setTimeout(() => window.location.reload(), 1000);
+          }else{
+            let message = 'Upload gagal.';
+            try{
+              const data = JSON.parse(xhr.responseText);
+              if(data.errors) message = Object.values(data.errors).flat().join(' ');
+              if(data.detail) message = data.detail;
+            }catch{}
+            statusText.textContent = message;
+            progressBar.classList.remove('progress-bar-animated');
+            progressBar.classList.add('bg-danger');
+          }
+        };
+
+        xhr.open('POST', '{% url "management-upload" %}');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.send(formData);
+      });
+      window.setInterval(refreshRasterStatuses, 5000);
+    }
+  });
+</script>
+{% endblock %}

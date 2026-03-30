@@ -1,0 +1,115 @@
+{% extends "mangroves/base.html" %}
+{% block title %}Kontak Kami | Mangrove Viewer{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <h1 class="text-center mb-4">Hubungi Tim Mangrove Viewer</h1>
+
+  <p class="lead text-center mb-5">
+    Kami terbuka untuk kolaborasi, umpan balik, dan pertanyaan dari siapa pun yang peduli terhadap
+    <strong>kelestarian ekosistem mangrove Indonesia</strong>. Silakan hubungi kami melalui formulir di bawah ini
+    atau gunakan kontak langsung di bagian akhir halaman.
+  </p>
+
+  <!-- Peta lokasi interaktif -->
+  <div class="mb-5 text-center">
+    <iframe
+      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.422338083305!2d106.82715311529542!3d-6.208763362547667!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f3e94b03f61f%3A0x758aeb92c76bde7d!2sBadan%20Riset%20dan%20Inovasi%20Nasional%20(BRIN)!5e0!3m2!1sen!2sid!4v1686578829123!5m2!1sen!2sid"
+      width="100%" height="350" style="border:0;" allowfullscreen="" loading="lazy">
+    </iframe>
+    <p class="small text-muted mt-2">Lokasi kantor pusat riset dan pengembangan (BRIN, Jakarta)</p>
+  </div>
+
+  <div class="row g-4">
+    <!-- Formulir kontak -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h4 class="mb-3">Kirim Pesan</h4>
+          <form id="contactForm">
+            <div class="mb-3">
+              <label for="name" class="form-label">Nama Lengkap</label>
+              <input type="text" id="name" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="email" class="form-label">Alamat Email</label>
+              <input type="email" id="email" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="subject" class="form-label">Subjek Pesan</label>
+              <input type="text" id="subject" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="message" class="form-label">Isi Pesan</label>
+              <textarea id="message" class="form-control" rows="5" required></textarea>
+            </div>
+            <div class="text-end">
+              <button type="submit" class="btn btn-success">Kirim Pesan</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Informasi kontak -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h4 class="mb-3">Informasi Kontak</h4>
+          <ul class="list-unstyled mb-3">
+            <li class="mb-2"><strong>Email:</strong> <a href="mailto:info@mangroveviewer.id">info@mangroveviewer.id</a></li>
+            <li class="mb-2"><strong>Telepon:</strong> +62 21 1234 5678</li>
+            <li class="mb-2"><strong>Alamat:</strong><br>
+              Gedung PRSDI - BRIN<br>
+              Jl. Sangkuriang No. 21, Bandung, Jawa Barat<br>
+              Indonesia 40135
+            </li>
+          </ul>
+
+          <h5 class="mb-2">Media Sosial</h5>
+          <a href="https://twitter.com" target="_blank" class="btn btn-outline-secondary btn-sm me-2">
+            <i class="bi bi-twitter"></i> Twitter
+          </a>
+          <a href="https://instagram.com" target="_blank" class="btn btn-outline-secondary btn-sm me-2">
+            <i class="bi bi-instagram"></i> Instagram
+          </a>
+          <a href="https://github.com" target="_blank" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-github"></i> GitHub
+          </a>
+
+          <hr>
+
+          <h6 class="text-muted">Jam Operasional</h6>
+          <p class="small mb-0">
+            Senin – Jumat: 08.00–16.00 WIB<br>
+            Sabtu – Minggu: Tutup
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pesan sukses -->
+  <div class="alert alert-success alert-dismissible fade mt-4" id="alertSuccess" role="alert">
+    <strong>Terima kasih!</strong> Pesan Anda telah dikirim. Kami akan menghubungi Anda segera.
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_end %}
+<script>
+  // Interaksi: simulasi kirim formulir (tanpa backend)
+  const form = document.getElementById('contactForm');
+  const alertSuccess = document.getElementById('alertSuccess');
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    alertSuccess.classList.add('show');
+    form.reset();
+    setTimeout(() => {
+      alertSuccess.classList.remove('show');
+    }, 5000);
+  });
+</script>
+{% endblock %}

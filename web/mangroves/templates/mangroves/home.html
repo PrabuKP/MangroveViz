@@ -1,0 +1,91 @@
+{% extends "mangroves/base.html" %}
+{% block title %}Beranda · Mangrove Viewer{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="container py-5">
+    <div class="row align-items-center g-4">
+      <div class="col-lg-7">
+        <h1 class="display-6 fw-bold mb-3">
+          Mangrove Viewer — Sistem Visualisasi & Eksplorasi
+          <span class="badge text-bg-success ms-2">Live</span>
+        </h1>
+        <p class="lead mb-4">
+          Unggah GeoTIFF → sistem auto reproject ke EPSG:4326, konversi RGBA, dan
+          membuat tiles XYZ untuk tampilan cepat di Leaflet.
+        </p>
+        <div class="d-flex gap-2">
+          {% if request.user.is_authenticated %}
+            <a class="btn btn-success btn-lg px-4" href="{% url 'viewer' %}">Lihat Peta</a>
+            <a class="btn btn-outline-secondary btn-lg px-4" href="{% url 'management' %}">Management Data</a>
+          {% else %}
+            <a class="btn btn-success btn-lg px-4" href="{% url 'login' %}">Login untuk Akses</a>
+            <a class="btn btn-outline-secondary btn-lg px-4" href="{% url 'register' %}">Register</a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="card card-feature shadow-sm">
+          <div class="card-body">
+            <h5 class="card-title">Status Sistem</h5>
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item d-flex justify-content-between"><span>Web</span><span class="badge bg-success">OK</span></li>
+              <li class="list-group-item d-flex justify-content-between"><span>Tiles</span><span class="badge bg-success">OK</span></li>
+              <li class="list-group-item d-flex justify-content-between"><span>API</span><span class="badge bg-success">OK</span></li>
+            </ul>
+            <div class="mt-3 small text-muted">Akses peta dan management data memerlukan login.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="my-5">
+
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="card card-feature h-100 shadow-sm">
+          <div class="card-body">
+            <h5 class="card-title">Alur</h5>
+            <ol class="mb-0">
+              <li>User login ke sistem</li>
+              <li>Buka <strong>Management Data</strong> lalu upload raster</li>
+              <li>Auto: reproject → RGBA → XYZ tiles</li>
+              <li>Raster muncul di halaman Peta</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card card-feature h-100 shadow-sm">
+          <div class="card-body">
+            <h5 class="card-title">Fitur Peta</h5>
+            <ul class="mb-0">
+              <li>Pilih layer raster</li>
+              <li>Filter vektor by map extent</li>
+              <li>Opacity slider + klik peta (Mangrove/Bukan)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card card-feature h-100 shadow-sm">
+          <div class="card-body">
+            <h5 class="card-title">Akses Pengguna</h5>
+            <ul class="mb-2">
+              <li>Register akun baru</li>
+              <li>Login untuk membuka peta</li>
+              <li>Kelola upload dan hapus raster dari interface aplikasi</li>
+            </ul>
+            {% if request.user.is_authenticated %}
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'management' %}">Buka Management</a>
+            {% else %}
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'register' %}">Mulai Sekarang</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,152 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Courier New;}}
+\fs22
+\b Functional Point Analysis (FPA)\b0\par
+\b Mangrove Visualization System\b0\par
+Project: nlplab/Prabu/mangroveviz\par
+Date: March 30, 2026\par
+Language: Python/Django\par
+Analysis Basis: Current implemented features after user-role UI, vector CRUD, raster queue, dashboard, export, and AOI guidance improvements\par
+\par
+\b 1. Executive Summary\b0\par
+\par
+\b Project Overview\b0\par
+Mangrove Viewer adalah aplikasi web GIS berbasis Django untuk visualisasi, analisis, dan manajemen data mangrove. Versi saat ini sudah mencakup autentikasi user, role viewer/editor/admin, UI assign role user, upload raster dengan validasi dan progress, queue sederhana untuk job raster berat, status polling, basemap switcher, klasifikasi klik peta, perhitungan luas raster dan ROI polygon, metadata raster, CRUD vektor, export data, dashboard statistik, dan audit trail.\par
+\par
+\b Current Size Metrics\b0\par
+- Total Lines of Code: 1455 LOC Python\par
+- Number of Python Files: 19\par
+- Number of HTML Templates: 9\par
+- Main Stack: Django, Django REST Framework, GeoDjango, Leaflet, GDAL, Docker, PostGIS\par
+- Estimated Functional Size: 188 UFP\par
+\par
+\b 2. Functional Point Count\b0\par
+\par
+\b 2.1 External Inputs (EI)\b0\par
+1. User Registration - 4 FP\par
+2. User Login - 4 FP\par
+3. User Logout - 3 FP\par
+4. Assign User Role - 4 FP\par
+5. Upload Raster via UI/API - 4 FP\par
+6. Delete Raster - 4 FP\par
+7. Create/Update Vector Data - 4 FP\par
+8. Delete Vector Data - 4 FP\par
+9. Search Mangrove Data - 3 FP\par
+10. Filter by Bounding Box - 3 FP\par
+11. Opacity Control - 3 FP\par
+12. Raster Selection - 3 FP\par
+13. Basemap Switching - 3 FP\par
+14. ROI Polygon Drawing - 4 FP\par
+Total EI: 50 FP\par
+\par
+\b 2.2 External Outputs (EO)\b0\par
+1. Interactive Map Display - 7 FP\par
+2. Raster List API - 5 FP\par
+3. Mangrove GeoJSON API - 5 FP\par
+4. Raster Area Output - 5 FP\par
+5. ROI Area Output - 5 FP\par
+6. Management Data Page - 7 FP\par
+7. Authentication Pages - 5 FP\par
+8. Raster Metadata Display - 5 FP\par
+9. Audit History Display - 5 FP\par
+10. Dashboard Statistics - 5 FP\par
+11. Export Raster CSV - 5 FP\par
+12. Export Vector GeoJSON - 5 FP\par
+Total EO: 64 FP\par
+\par
+\b 2.3 External Inquiries (EQ)\b0\par
+1. Map Click Classification - 3 FP\par
+2. Health Check - 3 FP\par
+3. Cached Area Retrieval - 4 FP\par
+4. Raster Status Polling - 4 FP\par
+5. AOI Guidance Inquiry - 3 FP\par
+Total EQ: 17 FP\par
+\par
+\b 2.4 Internal Logical Files (ILF)\b0\par
+1. MangroveSite - 10 FP\par
+2. RasterLayer - 10 FP\par
+3. Audit Log Store - 10 FP\par
+4. User Role State - 10 FP\par
+Total ILF: 40 FP\par
+\par
+\b 2.5 External Interface Files (EIF)\b0\par
+1. GeoTIFF Raster Files - 7 FP\par
+2. Basemap Tile Services - 5 FP\par
+3. GDAL Toolchain - 5 FP\par
+Total EIF: 17 FP\par
+\par
+\b 3. Functional Point Calculation\b0\par
+UFP = EI 50 + EO 64 + EQ 17 + ILF 40 + EIF 17 = 188 FP\par
+DI = 45\par
+VAF = 0.65 + (0.01 x 45) = 1.10\par
+AFP = 188 x 1.10 = 206.8\par
+Rounded adjusted size: 207 FP\par
+\par
+\b 4. Productivity Analysis\b0\par
+- LOC: 1455\par
+- UFP: 188\par
+- AFP: 207\par
+- LOC per FP: 7.03 LOC/FP\par
+- Estimated effort: about 23.0 person-months\par
+- Project size classification: Medium-Large\par
+\par
+\b 5. Technical Complexity Factors\b0\par
+Data Communications: 4\par
+Distributed Processing: 3\par
+Performance: 5\par
+Heavily Used Configuration: 2\par
+Transaction Rate: 3\par
+Online Data Entry: 5\par
+End-user Efficiency: 5\par
+Online Update: 5\par
+Complex Processing: 5\par
+Reusability: 3\par
+Installation Ease: 4\par
+Operational Ease: 4\par
+Multiple Sites: 1\par
+Facilitate Change: 3\par
+Total DI: 45\par
+\par
+\b 6. Quality and Maintainability Notes\b0\par
+\b Strengths\b0\par
+- Management page kini menangani raster, vektor, role user, statistik, export, dan audit.\par
+- Queue raster sederhana membuat processing lebih tertib.\par
+- AOI/ROI kini lebih jelas dari sisi instruksi pengguna.\par
+- Sistem semakin dekat ke aplikasi operasional GIS.\par
+\par
+\b Risks / Gaps\b0\par
+- Queue raster masih berbasis file lock lokal.\par
+- Audit trail masih berbasis file JSONL.\par
+- Belum ada automated test suite.\par
+- Dokumentasi API perlu disinkronkan lagi.\par
+\par
+\b 7. Current Functional Enhancements Reflected in This Update\b0\par
+1. UI assign role user.\par
+2. CRUD data vektor.\par
+3. Queue sederhana untuk job raster berat.\par
+4. Dashboard statistik.\par
+5. Export CSV dan GeoJSON.\par
+6. AOI guidance yang lebih jelas.\par
+7. Basemap switcher.\par
+8. Upload progress dan status polling.\par
+9. Metadata raster dan audit trail.\par
+\par
+\b 8. Recommendations\b0\par
+1. Sinkronkan API documentation dengan endpoint dan permission terbaru.\par
+2. Tambahkan test untuk role assignment, vector CRUD, dan export.\par
+3. Ganti queue file lock ke worker queue yang lebih kuat.\par
+4. Pindahkan audit trail ke database.\par
+5. Tambahkan pagination/filter pada management page.\par
+\par
+\b 9. Conclusion\b0\par
+Versi terbaru Mangrove Viewer telah berkembang menjadi aplikasi operasional GIS dengan manajemen user, raster, vektor, statistik, export, dan analitik area berbasis ROI. Dengan ukuran sekitar 207 adjusted function points, sistem ini berada pada kategori medium-large dan menunjukkan kematangan fungsional yang jauh lebih tinggi dibanding tahap awalnya.\par
+\par
+Final Assessment:\par
+- Size: Medium-Large (207 AFP)\par
+- Complexity: High\par
+- Quality: Good\par
+- Maintainability: Good\par
+- Growth Potential: High\par
+\par
+Analysis updated on March 30, 2026 based on the latest repository implementation.\par
+}

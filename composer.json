@@ -1,0 +1,14 @@
+{
+    "name": "nlplab/mangroveviz-fpa",
+    "description": "Functional Point Analysis for Mangrove Visualization System",
+    "type": "project",
+    "require-dev": {
+        "phploc/phploc": "^7.0",
+        "phpmetrics/phpmetrics": "^2.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "MangroveViz\\": "src/"
+        }
+    }
+}

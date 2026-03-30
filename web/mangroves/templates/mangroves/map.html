@@ -1,0 +1,214 @@
+{% extends "mangroves/base.html" %}
+{% block title %}Peta · Mangrove Viewer{% endblock %}
+{% load static %}
+
+{% block head_extra %}
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    html, body { height:100%; }
+    #map { position:absolute; inset:56px 0 0 0; } /* offset navbar */
+    .control-card { position:absolute; z-index:1000; top:70px; left:12px; width:360px; }
+    .legend { position:absolute; right:12px; bottom:12px; z-index:1000; }
+    .legend .swatch { width:14px; height:14px; display:inline-block; border-radius:2px; margin-right:6px; background:#00c853; }
+    .result-card { position:absolute; z-index:1000; bottom:12px; left:12px; width:360px; }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div id="map"></div>
+
+  <div class="control-card">
+    <div class="card shadow">
+      <div class="card-header py-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fw-semibold">Kontrol Peta</span>
+          <span class="badge text-bg-success">Live</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="mb-2">
+          <label class="form-label mb-1">Raster</label>
+          <select id="rasterSelect" class="form-select form-select-sm">
+            <option value="">(none)</option>
+          </select>
+          <div class="form-text">Gunakan tiles dari <code>/media/tiles/raster_&lt;ID&gt;/</code> (XYZ).</div>
+        </div>
+
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" id="chkViewBbox" checked>
+          <label class="form-check-label" for="chkViewBbox">Filter vektor sesuai tampilan peta</label>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label mb-1">Search (name/species)</label>
+          <input type="text" id="txtSearch" class="form-control form-control-sm" placeholder="e.g. avicennia">
+        </div>
+
+        <div class="d-flex gap-2 mb-2">
+          <button id="btnApply" class="btn btn-primary btn-sm">Apply</button>
+          <button id="btnZoom" class="btn btn-outline-secondary btn-sm">Zoom to raster</button>
+        </div>
+
+        <div>
+          <label for="opacity" class="form-label mb-1">Opacity: <span id="opv" class="fw-semibold">0.70</span></label>
+          <input id="opacity" type="range" min="0" max="1" step="0.05" value="0.7" class="form-range">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-card d-none" id="resultPanel">
+    <div class="card shadow">
+      <div class="card-body py-2">
+        <div class="d-flex align-items-center gap-2">
+          <div id="resultBadge"></div>
+          <div>
+            <div class="fw-semibold" id="resultTitle">—</div>
+            <div class="small text-muted" id="resultNote">Klik pada peta untuk melihat klasifikasi.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend card shadow">
+    <div class="card-body py-2">
+      <div class="small"><span class="swatch"></span> Mangrove (hijau)</div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block body_end %}
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map', { worldCopyJump:false, zoomControl:true }).setView([-5.5, 123.5], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+
+    let vectorLayer=null, rasterTileLayer=null, currentRasterBounds=null, currentRasterId=null, currentRasterName=null;
+
+    function normalizeBounds(b){ if(!b) return null;
+      const minx=Math.min(b.minx,b.maxx), maxx=Math.max(b.minx,b.maxx);
+      const miny=Math.min(b.miny,b.maxy), maxy=Math.max(b.miny,b.maxy);
+      return {minx,miny,maxx,maxy};
+    }
+
+    async function loadRasters(){
+      const r = await fetch('/api/rasters/'); const items = await r.json();
+      const sel = document.getElementById('rasterSelect');
+      items.forEach(it=>{
+        const opt=document.createElement('option');
+        opt.value=String(it.id); opt.textContent=it.name;
+        opt.dataset.minx=it.minx; opt.dataset.miny=it.miny;
+        opt.dataset.maxx=it.maxx; opt.dataset.maxy=it.maxy;
+        sel.appendChild(opt);
+      });
+      if(items.length && !sel.value){
+        sel.value=String(items[0].id);
+        sel.dispatchEvent(new Event('change'));
+      }
+    }
+
+    function applyRasterByTiles(id, rawBounds, name){
+      if(rasterTileLayer){ map.removeLayer(rasterTileLayer); rasterTileLayer=null; }
+      currentRasterId=id||null; currentRasterName=name||null; currentRasterBounds=null;
+      if(!id) return;
+
+      const tilesUrl = `/media/tiles/raster_${id}/{z}/{x}/{y}.png`;
+      const nb = normalizeBounds(rawBounds);
+      currentRasterBounds = nb ? L.latLngBounds([[nb.miny, nb.minx], [nb.maxy, nb.maxx]]) : null;
+
+      rasterTileLayer = L.tileLayer(tilesUrl, {
+        opacity: parseFloat(document.getElementById('opacity').value),
+        maxZoom: 22, maxNativeZoom: 14, tms: false, noWrap: true,
+        bounds: (currentRasterBounds || undefined),
+        errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==',
+        className: 'raster-tiles'
+      }).addTo(map);
+
+      if(currentRasterBounds) map.fitBounds(currentRasterBounds);
+    }
+
+    async function loadVectors(){
+      const chk=document.getElementById('chkViewBbox').checked;
+      const q=document.getElementById('txtSearch').value.trim();
+      let url='/api/mangroves/'; const params=[];
+      if(chk){ const b=map.getBounds(); params.push(`in_bbox=${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`); }
+      if(q) params.push(`search=${encodeURIComponent(q)}`);
+      if(params.length) url += '?' + params.join('&');
+
+      const r = await fetch(url); const gj = await r.json();
+      if(vectorLayer) map.removeLayer(vectorLayer);
+      vectorLayer = L.geoJSON(gj, {
+        onEachFeature:(f, layer)=>{
+          const p=f.properties||{};
+          layer.bindPopup(`<b>${p.name??'Site'}</b><br/>Species: ${p.species??'-'}<br/>Canopy: ${p.canopy_cover??'-'}%<br/>Source: ${p.source??'-'}`);
+        }, style:()=>({weight:1})
+      }).addTo(map);
+    }
+
+    document.getElementById('btnApply').addEventListener('click', loadVectors);
+    document.getElementById('rasterSelect').addEventListener('change', e=>{
+      const sel=e.target, id=sel.value; let bounds=null;
+      if(id && sel.selectedOptions.length){
+        const o=sel.selectedOptions[0].dataset;
+        bounds={minx:+o.minx, miny:+o.miny, maxx:+o.maxx, maxy:+o.maxy};
+      }
+      const name=sel.selectedOptions.length? sel.selectedOptions[0].textContent : null;
+      applyRasterByTiles(id, bounds, name);
+    });
+    document.getElementById('btnZoom').addEventListener('click', ()=>{ if(currentRasterBounds) map.fitBounds(currentRasterBounds); });
+    document.getElementById('opacity').addEventListener('input', e=>{
+      const v=+e.target.value; document.getElementById('opv').textContent=v.toFixed(2);
+      if(rasterTileLayer) rasterTileLayer.setOpacity(v);
+    });
+
+    // klik klasifikasi (baca piksel tile)
+    const resultPanel=document.getElementById('resultPanel');
+    const resultBadge=document.getElementById('resultBadge');
+    const resultTitle=document.getElementById('resultTitle');
+    const resultNote=document.getElementById('resultNote');
+    const hiddenCanvas=document.createElement('canvas'); hiddenCanvas.width=256; hiddenCanvas.height=256;
+    const hctx=hiddenCanvas.getContext('2d');
+
+    function lon2tile(lon,z){ return Math.floor((lon+180)/360*Math.pow(2,z)); }
+    function lat2tile(lat,z){ const rad=lat*Math.PI/180; return Math.floor((1-Math.log(Math.tan(rad)+1/Math.cos(rad))/Math.PI)/2*Math.pow(2,z)); }
+
+    function showResult(isMangrove, latlng, note){
+      resultPanel.classList.remove('d-none');
+      if(isMangrove===true){
+        resultBadge.innerHTML='<span class="badge text-bg-success">Mangrove</span>';
+        resultTitle.textContent='Lokasi terklasifikasi sebagai mangrove';
+        resultNote.textContent=`Layer: ${currentRasterName ?? '-'} • Koordinat: ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}. Klasifikasi indikatif.`;
+      }else if(isMangrove===false){
+        resultBadge.innerHTML='<span class="badge text-bg-secondary">Non-mangrove</span>';
+        resultTitle.textContent='Lokasi tidak terklasifikasi sebagai mangrove';
+        resultNote.textContent=`Layer: ${currentRasterName ?? '-'} • Koordinat: ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}.`;
+      }else{
+        resultBadge.innerHTML='<span class="badge text-bg-warning">Info</span>';
+        resultTitle.textContent='Tidak dapat menentukan';
+        resultNote.textContent=note ?? 'Coba zoom in lalu klik ulang.';
+      }
+    }
+
+    map.on('click', async (e)=>{
+      if(!currentRasterId) return;
+      const z=Math.round(map.getZoom());
+      const x=lon2tile(e.latlng.lng,z), y=lat2tile(e.latlng.lat,z);
+      const url=`/media/tiles/raster_${currentRasterId}/${z}/${x}/${y}.png`;
+      const p=map.project(e.latlng,z);
+      const px=Math.floor(p.x - x*256), py=Math.floor(p.y - y*256);
+      const img=new Image(); img.crossOrigin="anonymous";
+      img.onload=()=>{ try{
+        hctx.clearRect(0,0,256,256); hctx.drawImage(img,0,0);
+        const d=hctx.getImageData(px,py,1,1).data;
+        const isMangrove=(d[3]>0)||(d[1]>150);
+        showResult(isMangrove,e.latlng);
+      }catch{ showResult(null,e.latlng,'Tidak bisa membaca piksel tile.'); } };
+      img.onerror=()=>showResult(null,e.latlng,'Tile tidak tersedia pada zoom/posisi ini.');
+      img.src=url;
+    });
+
+    loadRasters(); loadVectors();
+    window.addEventListener('load',()=>setTimeout(()=>map.invalidateSize(),200));
+  </script>
+{% endblock %}

@@ -1,0 +1,372 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2639
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs28 \cf0 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Panduan Functional Point Analysis dengan PHPLoc & PHPMetric\
+
+\pard\pardeftab720\partightenfactor0
+\fs24 \cf0 1. Persiapan Environment\
+\pard\pardeftab720\partightenfactor0
+
+\fs20 \cf0 Install PHP dan Composer\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 # Ubuntu/Debian\
+sudo apt update\
+sudo apt install php-cli php-xml php-mbstring php-zip composer\
+\
+# macOS dengan Homebrew\
+brew install php composer\
+\
+# Windows dengan Chocolatey\
+choco install php composer\
+\
+\pard\pardeftab720\partightenfactor0
+\fs20 \cf0 Install Tools Analisis\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 # Via Composer (global)\
+composer global require phploc/phploc\
+composer global require phpmetrics/phpmetrics\
+\
+# Atau download PHAR files\
+wget https://phar.phpunit.de/phploc.phar\
+wget https://github.com/phpmetrics/PhpMetrics/releases/download/v2.4.1/phpmetrics.phar\
+\
+# Buat executable\
+chmod +x phploc.phar phpmetrics.phar\
+sudo mv phploc.phar /usr/local/bin/phploc\
+sudo mv phpmetrics.phar /usr/local/bin/phpmetrics\
+\
+\pard\pardeftab720\partightenfactor0
+\fs20 \cf0 Setup Project PHP\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 # Buat project baru\
+composer init\
+\
+# Atau untuk project existing\
+cd /path/to/php/project\
+composer require --dev phploc/phploc phpmetrics/phpmetrics\
+\
+\pard\pardeftab720\partightenfactor0
+\fs24 \cf0 2. Penggunaan PHPLoc\
+\pard\pardeftab720\partightenfactor0
+
+\fs20 \cf0 Basic Usage\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 # Analisis direktori\
+phploc src/\
+\
+# Analisis dengan output JSON\
+phploc --log-json=phploc.json src/\
+\
+# Analisis dengan progress bar\
+phploc --progress src/\
+\
+# Exclude directories\
+phploc --exclude=vendor --exclude=tests src/\
+\
+\pard\pardeftab720\partightenfactor0
+\fs20 \cf0 Output PHPLoc\
+PHPLoc memberikan metrics:\
+\'95 Lines of Code (LOC): Total baris kode\
+\'95 Cyclomatic Complexity: Kompleksitas siklomatik\
+\'95 Number of Classes/Interfaces: Jumlah class dan interface\
+\'95 Number of Methods: Jumlah method\
+\'95 Code Coverage: Coverage testing\
+\
+\pard\pardeftab720\partightenfactor0
+\fs20 \cf0 Contoh Output\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 phploc 7.0.2 by Sebastian Bergmann.\
+\
+Directories:                                          1\
+Files:                                               18\
+\
+Size\
+  Lines of Code (LOC):                             617\
+  Comment Lines of Code (CLOC):                      89\
+  Non-Comment Lines of Code (NCLOC):               528\
+  Logical Lines of Code (LLOC):                     312\
+\
+Complexity\
+  Cyclomatic Complexity / Number of Methods:      2.45\
+  Cyclomatic Complexity / Lines of Code:          0.13\
+\
+Dependencies\
+  Global Accesses:                                  45\
+  Global Constants:                                  0\
+  Global Variables:                                  0\
+  Super-Global Variables:                            0\
+\
+Structure\
+  Namespaces:                                         1\
+  Interfaces:                                          0\
+  Traits:                                              0\
+  Classes:                                            12\
+  Abstract Classes:                                    0\
+  Concrete Classes:                                   12\
+  Methods:                                            45\
+  Non-Static Methods:                                 42\
+  Static Methods:                                      3\
+  Public Methods:                                     40\
+  Non-Public Methods:                                  5\
+  Functions:                                           0\
+  Named Functions:                                     0\
+  Anonymous Functions:                                 0\
+\
+\pard\pardeftab720\partightenfactor0
+\fs24 \cf0 3. Penggunaan PHPMetric\
+\pard\pardeftab720\partightenfactor0
+
+\fs20 \cf0 Basic Usage\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 # Analisis direktori\
+phpmetrics --report-html=metrics src/\
+\
+# Analisis dengan format JSON\
+phpmetrics --report-json=metrics.json src/\
+\
+# Analisis dengan violations\
+phpmetrics --violations src/\
+\
+# Custom rules\
+phpmetrics --config=phpmetrics.json src/\
+\
+\pard\pardeftab720\partightenfactor0
+\fs20 \cf0 Output PHPMetric\
+PHPMetric memberikan analisis mendalam:\
+\'95 Maintainability Index: Indeks maintainability\
+\'95 Technical Debt: Hutang teknis\
+\'95 Cyclomatic Complexity: Kompleksitas per method\
+\'95 Halstead Metrics: Volume, difficulty, effort\
+\'95 Code Violations: Pelanggaran coding standards\
+\
+\pard\pardeftab720\partightenfactor0
+\fs20 \cf0 Contoh Output HTML Report\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 \'95\'95\'95 index.html (Dashboard utama)\
+\'95\'95\'95 violations.html (Code violations)\
+\'95\'95\'95 complexity.html (Complexity analysis)\
+\'95\'95\'95 maintainability.html (Maintainability index)\
+\'95\'95\'95 barcharts.html (Charts dan graphs)\
+\'95\'95\'95 assets/ (CSS, JS, images)\
+\
+\pard\pardeftab720\partightenfactor0
+\fs24 \cf0 4. Metodologi Functional Point Analysis\
+\pard\pardeftab720\partightenfactor0
+
+\fs20 \cf0 Identifikasi Function Types\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 External Input (EI)\
+- Form submissions\
+- File uploads\
+- API POST/PUT requests\
+- Data entry forms\
+\
+External Output (EO)\
+- Reports\
+- API responses\
+- Email notifications\
+- File downloads\
+\
+External Inquiry (EQ)\
+- Search forms\
+- API GET requests\
+- Data queries\
+- Status checks\
+\
+Internal Logical Files (ILF)\
+- Database tables\
+- Configuration files\
+- Cache storage\
+- Session data\
+\
+External Interface Files (EIF)\
+- External APIs\
+- Third-party services\
+- File imports\
+- Data feeds\
+\
+\pard\pardeftab720\partightenfactor0
+\fs20 \cf0 Complexity Assessment\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 Data Element Types (DET)\
+- Input fields\
+- Output fields\
+- Database columns\
+- API parameters\
+\
+File Type Referenced (FTR)\
+- Number of files/tables referenced\
+- External systems accessed\
+\
+Complexity Matrix\
+Low Complexity:    DET: 1-4,   FTR: 0-1\
+Average Complexity: DET: 5-15, FTR: 2-3\
+High Complexity:    DET: 16+,  FTR: 4+\
+\
+\pard\pardeftab720\partightenfactor0
+\fs20 \cf0 Function Point Calculation\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 Unadjusted Function Points (UFP)\
+UFP = \'8e(EI \'d7 Weight) + \'8e(EO \'d7 Weight) + \'8e(EQ \'d7 Weight) + \'8e(ILF \'d7 Weight) + \'8e(EIF \'d7 Weight)\
+\
+Weights by Complexity\
+| Type | Low | Average | High |\
+|------|-----|---------|------|\
+| EI   | 3   | 4       | 6    |\
+| EO   | 4   | 5       | 7    |\
+| EQ   | 3   | 4       | 6    |\
+| ILF  | 7   | 10      | 15   |\
+| EIF  | 5   | 7       | 10   |\
+\
+Value Adjustment Factor (VAF)\
+VAF = 0.65 + (0.01 \'d7 Degree of Influence)\
+\
+\pard\pardeftab720\partightenfactor0
+\fs20 \cf0 Productivity Metrics\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 Lines of Code per Function Point\
+- Assembly: 320 LOC/FP\
+- C: 150 LOC/FP\
+- Java: 55 LOC/FP\
+- PHP: 50-65 LOC/FP\
+- Python: 40-50 LOC/FP\
+\
+Effort Estimation\
+Effort (person-months) = AFP \'f7 Productivity Rate\
+Productivity Rate \'eb 8-12 FP per person-month\
+\
+\pard\pardeftab720\partightenfactor0
+\fs24 \cf0 5. Contoh Analisis untuk PHP Project\
+\pard\pardeftab720\partightenfactor0
+
+\fs20 \cf0 E-commerce Website\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 # Analisis kode\
+phploc app/\
+phpmetrics --report-html=metrics app/\
+\
+# Function Point Count\
+EI: User registration (4 FP), Product search (3 FP), Add to cart (4 FP)\
+EO: Order confirmation (5 FP), Invoice (7 FP)\
+EQ: Product catalog (4 FP), Order status (3 FP)\
+ILF: Users table (10 FP), Products table (10 FP), Orders table (10 FP)\
+EIF: Payment gateway (7 FP), Shipping API (5 FP)\
+\
+Total UFP: 82 FP\
+VAF: 1.05 (DI = 40)\
+AFP: 86 FP\
+\
+\pard\pardeftab720\partightenfactor0
+\fs20 \cf0 Content Management System\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 # Analisis kode\
+phploc src/\
+phpmetrics --report-html=metrics src/\
+\
+# Function Point Count\
+EI: Create post (4 FP), Upload media (4 FP)\
+EO: RSS feed (5 FP), Sitemap (4 FP)\
+EQ: Search content (3 FP), Category filter (3 FP)\
+ILF: Posts table (10 FP), Users table (10 FP), Media table (7 FP)\
+EIF: Social media APIs (7 FP), Analytics (5 FP)\
+\
+Total UFP: 75 FP\
+VAF: 0.95 (DI = 30)\
+AFP: 71 FP\
+\
+\pard\pardeftab720\partightenfactor0
+\fs24 \cf0 6. Best Practices\
+\pard\pardeftab720\partightenfactor0
+
+\fs20 \cf0 Regular Analysis\
+- Jalankan analisis setiap sprint/release\
+- Track metrics over time\
+- Identify improvement areas\
+\
+Quality Gates\
+- Set thresholds untuk complexity\
+- Monitor maintainability index\
+- Review code violations\
+\
+Integration dengan CI/CD\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 # .github/workflows/analysis.yml\
+name: Code Analysis\
+on: [push, pull_request]\
+jobs:\
+  analysis:\
+    runs-on: ubuntu-latest\
+    steps:\
+      - uses: actions/checkout@v2\
+      - name: Setup PHP\
+        uses: shivammathur/setup-php@v2\
+        with:\
+          php-version: '8.1'\
+      - name: Install dependencies\
+        run: composer install\
+      - name: Run PHPLoc\
+        run: phploc src/ --log-json=phploc.json\
+      - name: Run PHPMetric\
+        run: phpmetrics --report-html=metrics src/\
+      - name: Upload artifacts\
+        uses: actions/upload-artifact@v2\
+        with:\
+          name: code-metrics\
+          path: |\
+            phploc.json\
+            metrics/\
+\
+\pard\pardeftab720\partightenfactor0
+\fs20 \cf0 Custom Rules\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 // phpmetrics.json\
+\{\
+  "rules": \{\
+    "cyclomaticComplexity": \{\
+      "max": 10\
+    \},\
+    "maintainabilityIndex": \{\
+      "min": 50\
+    \},\
+    "halsteadVolume": \{\
+      "max": 1000\
+    \}\
+  \}\
+\}\
+\
+\pard\pardeftab720\partightenfactor0
+\fs24 \cf0 7. Kesimpulan\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 Functional Point Analysis dengan PHPLoc dan PHPMetric memberikan:\
+\'95 Objective measurement ukuran fungsional aplikasi\
+\'95 Quality metrics untuk maintainability dan complexity\
+\'95 Productivity tracking untuk estimasi effort\
+\'95 Technical debt identification untuk improvement planning\
+\
+Dengan tools ini, development teams dapat membuat keputusan yang lebih informed tentang project planning, resource allocation, dan quality improvement initiatives.\
+\
+---\
+*Panduan untuk analisis Functional Point Analysis pada project PHP*\
+}
