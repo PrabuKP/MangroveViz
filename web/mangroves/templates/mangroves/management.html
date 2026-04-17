@@ -350,6 +350,14 @@
 
 {% block body_end %}
 <script>
+  function renderStatusBadge(status){
+    if(status === 'ok') return '<span class="badge text-bg-success">Ready</span>';
+    if(status === 'error') return '<span class="badge text-bg-danger">Error</span>';
+    if(status === 'processing') return '<span class="badge text-bg-warning">Processing</span>';
+    if(status === 'pending') return '<span class="badge text-bg-secondary">Queued</span>';
+    return `<span class="badge text-bg-secondary">${status || 'none'}</span>`;
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     ['id_name', 'id_file', 'id_species', 'id_canopy_cover', 'id_source', 'id_latitude', 'id_longitude'].forEach((id) => {
       const input = document.getElementById(id);
@@ -360,14 +368,6 @@
     const progressWrap = document.getElementById('uploadProgressWrap');
     const progressBar = document.getElementById('uploadProgressBar');
     const statusText = document.getElementById('uploadStatusText');
-
-    function renderStatusBadge(status){
-      if(status === 'ok') return '<span class="badge text-bg-success">Ready</span>';
-      if(status === 'error') return '<span class="badge text-bg-danger">Error</span>';
-      if(status === 'processing') return '<span class="badge text-bg-warning">Processing</span>';
-      if(status === 'pending') return '<span class="badge text-bg-secondary">Queued</span>';
-      return `<span class="badge text-bg-secondary">${status || 'none'}</span>`;
-    }
 
     async function refreshRasterStatuses(){
       const response = await fetch('{% url "management-status" %}');

@@ -215,97 +215,127 @@ class DataManagementView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         ctx["can_manage_users"] = user_is_admin(self.request.user)
         return ctx
 
+    def _redirect_management(self):
+        return redirect("management")
+
+    def _render_management(self, **kwargs):
+        return self.render_to_response(self.get_context_data(**kwargs))
+
+    def _reject_editor_action(self, request, message_text):
+        messages.error(request, message_text)
+        return self._redirect_management()
+
+    def _reject_admin_action(self, request, message_text):
+        messages.error(request, message_text)
+        return self._redirect_management()
+
+    def _handle_upload_raster(self, request):
+        if not user_is_editor(request.user):
+            return self._reject_editor_action(request, "Anda tidak memiliki izin upload raster.")
+
+        upload_form = RasterUploadForm(request.POST, request.FILES)
+        if not upload_form.is_valid():
+            return self._render_management(upload_form=upload_form)
+
+        existing_names = list(RasterLayer.objects.values_list("name", flat=True))
+        version = get_next_raster_version(upload_form.cleaned_data["name"], existing_names)
+        raster = upload_form.save()
+        append_audit_log({
+            "action": "upload",
+            "user": request.user.username,
+            "role": user_role_label(request.user),
+            "raster_id": raster.id,
+            "raster_name": raster.name,
+            "file_name": raster.source_label,
+            "version": version,
+            "previous_versions": [name for name in existing_names if name == raster.name],
+        })
+        messages.success(request, f"Raster '{raster.name}' berhasil diunggah. Proses metadata dan tiles sedang berjalan.")
+        return self._redirect_management()
+
+    def _handle_delete_raster(self, request):
+        if not user_is_admin(request.user):
+            return self._reject_admin_action(request, "Hanya admin yang dapat menghapus raster.")
+
+        raster = get_object_or_404(RasterLayer, pk=request.POST.get("raster_id"))
+        append_audit_log({
+            "action": "delete",
+            "user": request.user.username,
+            "role": user_role_label(request.user),
+            "raster_id": raster.id,
+            "raster_name": raster.name,
+            "file_name": raster.source_label,
+            "version": getattr(raster, "audit_info", {}).get("version"),
+        })
+        try:
+            cleanup_raster_files(raster)
+        except Exception as e:
+            messages.warning(request, f"Sebagian file raster '{raster.name}' tidak bisa dibersihkan: {e}")
+
+        raster.delete()
+        messages.success(request, f"Raster '{raster.name}' berhasil dihapus.")
+        return self._redirect_management()
+
+    def _handle_save_site(self, request):
+        if not user_is_editor(request.user):
+            return self._reject_editor_action(request, "Hanya editor atau admin yang dapat menyimpan data vektor.")
+
+        site = None
+        site_id = request.POST.get("site_id")
+        if site_id:
+            site = get_object_or_404(MangroveSite, pk=site_id)
+
+        vector_form = MangroveSiteForm(request.POST, instance=site)
+        if not vector_form.is_valid():
+            return self._render_management(vector_form=vector_form, edit_site=site)
+
+        site = vector_form.save()
+        messages.success(request, f"Data vektor '{site.name}' berhasil disimpan.")
+        return self._redirect_management()
+
+    def _handle_delete_site(self, request):
+        if not user_is_admin(request.user):
+            return self._reject_admin_action(request, "Hanya admin yang dapat menghapus data vektor.")
+
+        site = get_object_or_404(MangroveSite, pk=request.POST.get("site_id"))
+        site_name = site.name
+        site.delete()
+        messages.success(request, f"Data vektor '{site_name}' berhasil dihapus.")
+        return self._redirect_management()
+
+    def _handle_update_user_role(self, request):
+        if not user_is_admin(request.user):
+            return self._reject_admin_action(request, "Hanya admin yang dapat mengubah role user.")
+
+        target_user = get_object_or_404(User, pk=request.POST.get("user_id"))
+        role = request.POST.get("role")
+        if role not in {"viewer", "editor", "admin"}:
+            return self._reject_admin_action(request, "Role tidak valid.")
+
+        if request.user.pk == target_user.pk and role != "admin":
+            return self._reject_admin_action(
+                request,
+                "Admin aktif tidak dapat menurunkan role dirinya sendiri dari halaman ini.",
+            )
+
+        assign_user_role(target_user, role)
+        messages.success(request, f"Role user '{target_user.username}' berhasil diubah menjadi {role}.")
+        return self._redirect_management()
+
     def post(self, request, *args, **kwargs):
         action = request.POST.get("action")
-
-        if action == "upload_raster":
-            if not user_is_editor(request.user):
-                messages.error(request, "Anda tidak memiliki izin upload raster.")
-                return redirect("management")
-            upload_form = RasterUploadForm(request.POST, request.FILES)
-            if upload_form.is_valid():
-                existing_names = list(RasterLayer.objects.values_list("name", flat=True))
-                version = get_next_raster_version(upload_form.cleaned_data["name"], existing_names)
-                raster = upload_form.save()
-                append_audit_log({
-                    "action": "upload",
-                    "user": request.user.username,
-                    "role": user_role_label(request.user),
-                    "raster_id": raster.id,
-                    "raster_name": raster.name,
-                    "file_name": raster.source_label,
-                    "version": version,
-                    "previous_versions": [name for name in existing_names if name == raster.name],
-                })
-                messages.success(request, f"Raster '{raster.name}' berhasil diunggah. Proses metadata dan tiles sedang berjalan.")
-                return redirect("management")
-            return self.render_to_response(self.get_context_data(upload_form=upload_form))
-
-        if action == "delete_raster":
-            if not user_is_admin(request.user):
-                messages.error(request, "Hanya admin yang dapat menghapus raster.")
-                return redirect("management")
-            raster = get_object_or_404(RasterLayer, pk=request.POST.get("raster_id"))
-            append_audit_log({
-                "action": "delete",
-                "user": request.user.username,
-                "role": user_role_label(request.user),
-                "raster_id": raster.id,
-                "raster_name": raster.name,
-                "file_name": raster.source_label,
-                "version": getattr(raster, "audit_info", {}).get("version"),
-            })
-            try:
-                cleanup_raster_files(raster)
-            except Exception as e:
-                messages.warning(request, f"Sebagian file raster '{raster.name}' tidak bisa dibersihkan: {e}")
-            raster.delete()
-            messages.success(request, f"Raster '{raster.name}' berhasil dihapus.")
-            return redirect("management")
-
-        if action == "save_site":
-            if not user_is_editor(request.user):
-                messages.error(request, "Hanya editor atau admin yang dapat menyimpan data vektor.")
-                return redirect("management")
-            site = None
-            site_id = request.POST.get("site_id")
-            if site_id:
-                site = get_object_or_404(MangroveSite, pk=site_id)
-            vector_form = MangroveSiteForm(request.POST, instance=site)
-            if vector_form.is_valid():
-                site = vector_form.save()
-                messages.success(request, f"Data vektor '{site.name}' berhasil disimpan.")
-                return redirect("management")
-            return self.render_to_response(self.get_context_data(vector_form=vector_form, edit_site=site))
-
-        if action == "delete_site":
-            if not user_is_admin(request.user):
-                messages.error(request, "Hanya admin yang dapat menghapus data vektor.")
-                return redirect("management")
-            site = get_object_or_404(MangroveSite, pk=request.POST.get("site_id"))
-            site_name = site.name
-            site.delete()
-            messages.success(request, f"Data vektor '{site_name}' berhasil dihapus.")
-            return redirect("management")
-
-        if action == "update_user_role":
-            if not user_is_admin(request.user):
-                messages.error(request, "Hanya admin yang dapat mengubah role user.")
-                return redirect("management")
-            target_user = get_object_or_404(User, pk=request.POST.get("user_id"))
-            role = request.POST.get("role")
-            if role not in {"viewer", "editor", "admin"}:
-                messages.error(request, "Role tidak valid.")
-                return redirect("management")
-            if request.user.pk == target_user.pk and role != "admin":
-                messages.error(request, "Admin aktif tidak dapat menurunkan role dirinya sendiri dari halaman ini.")
-                return redirect("management")
-            assign_user_role(target_user, role)
-            messages.success(request, f"Role user '{target_user.username}' berhasil diubah menjadi {role}.")
-            return redirect("management")
-
-        messages.error(request, "Aksi tidak dikenali.")
-        return redirect("management")
+        handlers = {
+            "upload_raster": self._handle_upload_raster,
+            "delete_raster": self._handle_delete_raster,
+            "save_site": self._handle_save_site,
+            "delete_site": self._handle_delete_site,
+            "update_user_role": self._handle_update_user_role,
+        }
+        handler = handlers.get(action)
+        if handler is None:
+            messages.error(request, "Aksi tidak dikenali.")
+            return self._redirect_management()
+        return handler(request)
 
 
 @login_required

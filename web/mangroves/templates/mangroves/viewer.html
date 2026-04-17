@@ -26,7 +26,7 @@
         </div>
         <div class="card-body">
           <div class="mb-2">
-            <label class="form-label mb-1">Raster</label>
+            <label for="rasterSelect" class="form-label mb-1">Raster</label>
             <select id="rasterSelect" class="form-select form-select-sm">
               <option value="">(none)</option>
             </select>
@@ -34,7 +34,7 @@
           </div>
 
           <div class="mb-2">
-            <label class="form-label mb-1">Basemap</label>
+            <label for="basemapSelect" class="form-label mb-1">Basemap</label>
             <select id="basemapSelect" class="form-select form-select-sm">
               <option value="street">Street</option>
               <option value="terrain">Terrain</option>
@@ -48,7 +48,7 @@
           </div>
 
           <div class="mb-2">
-            <label class="form-label mb-1">Search (name/species)</label>
+            <label for="txtSearch" class="form-label mb-1">Search (name/species)</label>
             <input type="text" id="txtSearch" class="form-control form-control-sm" placeholder="e.g. avicennia">
           </div>
 
@@ -124,6 +124,32 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <script>
+  function normalizeBounds(b){
+    if(!b) return null;
+    const minx=Math.min(b.minx,b.maxx), maxx=Math.max(b.minx,b.maxx);
+    const miny=Math.min(b.miny,b.maxy), maxy=Math.max(b.miny,b.maxy);
+    return {minx,miny,maxx,maxy};
+  }
+
+  function formatArea(value){
+    if(value===null || value===undefined || Number.isNaN(Number(value))) return 'Belum tersedia';
+    return `${Number(value).toLocaleString('id-ID',{maximumFractionDigits:2})} ha`;
+  }
+
+  function formatAreaKm2(value){
+    if(value===null || value===undefined || Number.isNaN(Number(value))) return 'Belum tersedia';
+    return `${(Number(value) / 100).toLocaleString('id-ID',{maximumFractionDigits:2})} km²`;
+  }
+
+  function lon2tile(lon,z){
+    return Math.floor((lon+180)/360*Math.pow(2,z));
+  }
+
+  function lat2tile(lat,z){
+    const r=lat*Math.PI/180;
+    return Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z));
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     const map = L.map('map').setView([-5.5, 123.5], 6);
     const basemaps = {
@@ -174,22 +200,6 @@
     const roiAreaStatus=document.getElementById('roiAreaStatus');
     const roiAreaMangrove=document.getElementById('roiAreaMangrove');
     const roiAreaNonMangrove=document.getElementById('roiAreaNonMangrove');
-
-    function normalizeBounds(b){ if(!b) return null;
-      const minx=Math.min(b.minx,b.maxx), maxx=Math.max(b.minx,b.maxx);
-      const miny=Math.min(b.miny,b.maxy), maxy=Math.max(b.miny,b.maxy);
-      return {minx,miny,maxx,maxy};
-    }
-
-    function formatArea(value){
-      if(value===null || value===undefined || Number.isNaN(Number(value))) return 'Belum tersedia';
-      return `${Number(value).toLocaleString('id-ID',{maximumFractionDigits:2})} ha`;
-    }
-
-    function formatAreaKm2(value){
-      if(value===null || value===undefined || Number.isNaN(Number(value))) return 'Belum tersedia';
-      return `${(Number(value) / 100).toLocaleString('id-ID',{maximumFractionDigits:2})} km²`;
-    }
 
     function resetAreaInfo(){
       areaRasterName.textContent='Belum ada raster dipilih';
@@ -365,9 +375,6 @@
     const resultNote=document.getElementById('resultNote');
     const hiddenCanvas=document.createElement('canvas'); hiddenCanvas.width=256; hiddenCanvas.height=256;
     const hctx=hiddenCanvas.getContext('2d');
-
-    function lon2tile(lon,z){ return Math.floor((lon+180)/360*Math.pow(2,z)); }
-    function lat2tile(lat,z){ const r=lat*Math.PI/180; return Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z)); }
 
     function showResult(isMangrove, latlng, note){
       resultPanel.classList.remove('d-none');

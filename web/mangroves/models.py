@@ -54,14 +54,14 @@ class RasterLayer(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     # --- status pembuatan tiles ---
-    TILES_STATUS = [
+    TILE_STATUS_CHOICES = [
         ("none", "None"),
         ("pending", "Pending"),
         ("processing", "Processing"),
         ("ok", "OK"),
         ("error", "Error"),
     ]
-    tiles_status  = models.CharField(max_length=16, choices=TILES_STATUS, default="none")
+    tiles_status  = models.CharField(max_length=16, choices=TILE_STATUS_CHOICES, default="none")
     tiles_message = models.TextField(blank=True, default="")
     tiles_dir     = models.CharField(max_length=255, blank=True, default="")
 
